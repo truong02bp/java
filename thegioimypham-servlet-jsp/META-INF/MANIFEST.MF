@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: my-pham
+Bundle-SymbolicName: my-pham
+Bundle-Version: 1.0.0.qualifier
+Export-Package: com.mypham.controller.admin,
+ com.mypham.controller.web,
+ com.myphamchinhhang.my_pham
+Require-Bundle: org.junit
