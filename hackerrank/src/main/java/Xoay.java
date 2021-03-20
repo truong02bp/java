@@ -16,7 +16,6 @@ public class Xoay {
         int n = scanner.nextInt();
         int step = scanner.nextInt();
         int[][] stone = new int[105][105];
-        stone.length
         for (int i=0;i<m;i++)
             for (int j=0;j<n;j++)
                 stone[i][j] = scanner.nextInt();
