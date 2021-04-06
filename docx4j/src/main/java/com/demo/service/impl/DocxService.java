@@ -1,31 +1,34 @@
 package com.demo.service.impl;
 
 
-import com.documents4j.api.DocumentType;
-import com.documents4j.api.IConverter;
-import com.documents4j.job.LocalConverter;
+import com.lowagie.text.Font;
+import com.lowagie.text.pdf.BaseFont;
+import fr.opensagres.poi.xwpf.converter.pdf.PdfConverter;
+import fr.opensagres.poi.xwpf.converter.pdf.PdfOptions;
 import org.apache.commons.io.FileUtils;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.docx4j.*;
 import org.docx4j.convert.in.xhtml.XHTMLImporterImpl;
 import org.docx4j.convert.out.HTMLSettings;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.jaxb.Context;
 import org.docx4j.jaxb.XPathBinderAssociationIsPartialException;
-import org.docx4j.model.fields.merge.DataFieldName;
-import org.docx4j.model.fields.merge.MailMerger;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.openpackaging.parts.WordprocessingML.BinaryPartAbstractImage;
 import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
 import org.docx4j.openpackaging.parts.WordprocessingML.NumberingDefinitionsPart;
 import org.docx4j.wml.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class DocxService {
@@ -130,76 +133,113 @@ public class DocxService {
         return fields;
     }
 
-    public byte[] fillMailMerge(String type) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        InputStream is = null;
-        WordprocessingMLPackage document = null;
-        try {
-            is = new FileInputStream("C:\\Users\\truon\\Desktop\\1.ADD-CK-GHDKX-1NG-KCC.docx");
-//            is = new ByteArrayInputStream(file.getBytes());
-            document = WordprocessingMLPackage.load(is);
-        } catch (IOException | Docx4JException e) {
-            e.printStackTrace();
-        }
-        if (document != null) {
-            List<String> mailMerges = new ArrayList<>();
-            List<Object> checkboxes = null;
-            List<Object> textFields = null;
-            try {
-                checkboxes = document.getMainDocumentPart().getJAXBNodesViaXPath("//w:checkBox",
-                        false);
-                textFields = document.getMainDocumentPart().getJAXBNodesViaXPath("//w:instrText ", true);
-            } catch (JAXBException | XPathBinderAssociationIsPartialException e) {
-                e.printStackTrace();
-            }
-            Map<DataFieldName, String> values = new HashMap<>();
-            Random random = new Random();
-            String[] content = {"TỪ NAY DUYÊN KIẾP", "BỎ LẠI PHÍA SAU", "NGÀY VÀ BÓNG TỐI", "CHẲNG CÒN KHÁC NHAU"
-                    , "CHẲNG CÓ NƠI NÀO YÊN BÌNH", "ĐƯỢC NHƯ EM BÊN ANH"};
-            // solve check box
-            if (checkboxes != null)
-                for (Object o : checkboxes) {
-                    o = XmlUtils.unwrap(o);
-                    CTFFCheckBox checkBox = (CTFFCheckBox) o;
-                    CTFFData data = (CTFFData) checkBox.getParent();
-                    CTFFName ctffName = (CTFFName) data.getNameOrEnabledOrCalcOnExit().get(0).getValue();
-                    String name = ctffName.getVal();
-                    BooleanDefaultTrue booleanDefaultTrue = new BooleanDefaultTrue();
-                    booleanDefaultTrue.setVal(true);
-                    checkBox.setChecked(booleanDefaultTrue);
-                }
-            // solve merge field
-            if (textFields != null)
-                mailMerges = getAllMergeFields(textFields);
-            for (String mailMerge : mailMerges) {
-                String value = content[random.nextInt(4)];
-                if (mailMerge.equals("Lãi_suất_ghi_trên_KUNN") || mailMerge.equals("ĐT_HDTC")) {
-                    document = replaceTextByBullets(document, "0964279710\nĐiện thoại 2 : 12345\nĐiện thoại 3 : 5678", mailMerge);
-                } else
-                    values.put(new DataFieldName(mailMerge), value);
-            }
-            MailMerger.setMERGEFIELDInOutput(MailMerger.OutputField.KEEP_MERGEFIELD);
-            try {
-                MailMerger.performMerge(document, values, false);
-                Docx4J.save(document, byteArrayOutputStream);
-            } catch (Docx4JException e) {
-                e.printStackTrace();
-            }
-            if (type.equals("pdf"))
-                return docxToPdf(byteArrayOutputStream.toByteArray());
-        }
-        return byteArrayOutputStream.toByteArray();
-    }
+//    public byte[] fillMailMerge(String type) {
+//        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//        InputStream is = null;
+//        WordprocessingMLPackage document = null;
+//        try {
+//            is = new FileInputStream("C:\\Users\\truon\\Desktop\\1.ADD-CK-GHDKX-1NG-KCC.docx");
+////            is = new ByteArrayInputStream(file.getBytes());
+//            document = WordprocessingMLPackage.load(is);
+//        } catch (IOException | Docx4JException e) {
+//            e.printStackTrace();
+//        }
+//        if (document != null) {
+//            List<String> mailMerges = new ArrayList<>();
+//            List<Object> checkboxes = null;
+//            List<Object> textFields = null;
+//            try {
+//                checkboxes = document.getMainDocumentPart().getJAXBNodesViaXPath("//w:checkBox",
+//                        false);
+//                textFields = document.getMainDocumentPart().getJAXBNodesViaXPath("//w:instrText ", true);
+//            } catch (JAXBException | XPathBinderAssociationIsPartialException e) {
+//                e.printStackTrace();
+//            }
+//            Map<DataFieldName, String> values = new HashMap<>();
+//            Random random = new Random();
+//            String[] content = {"TỪ NAY DUYÊN KIẾP", "BỎ LẠI PHÍA SAU", "NGÀY VÀ BÓNG TỐI", "CHẲNG CÒN KHÁC NHAU"
+//                    , "CHẲNG CÓ NƠI NÀO YÊN BÌNH", "ĐƯỢC NHƯ EM BÊN ANH"};
+//            // solve check box
+//            if (checkboxes != null)
+//                for (Object o : checkboxes) {
+//                    o = XmlUtils.unwrap(o);
+//                    CTFFCheckBox checkBox = (CTFFCheckBox) o;
+//                    CTFFData data = (CTFFData) checkBox.getParent();
+//                    CTFFName ctffName = (CTFFName) data.getNameOrEnabledOrCalcOnExit().get(0).getValue();
+//                    String name = ctffName.getVal();
+//                    BooleanDefaultTrue booleanDefaultTrue = new BooleanDefaultTrue();
+//                    booleanDefaultTrue.setVal(true);
+//                    checkBox.setChecked(booleanDefaultTrue);
+//                }
+//            // solve merge field
+//            if (textFields != null)
+//                mailMerges = getAllMergeFields(textFields);
+//            for (String mailMerge : mailMerges) {
+//                String value = content[random.nextInt(4)];
+//                if (mailMerge.equals("Lãi_suất_ghi_trên_KUNN") || mailMerge.equals("ĐT_HDTC")) {
+//                    document = replaceTextByBullets(document, "0964279710\nĐiện thoại 2 : 12345\nĐiện thoại 3 : 5678", mailMerge);
+//                } else
+//                    values.put(new DataFieldName(mailMerge), value);
+//            }
+//            MailMerger.setMERGEFIELDInOutput(MailMerger.OutputField.KEEP_MERGEFIELD);
+//            try {
+//                MailMerger.performMerge(document, values, false);
+//                Docx4J.save(document, byteArrayOutputStream);
+//            } catch (Docx4JException e) {
+//                e.printStackTrace();
+//            }
+//            if (type.equals("pdf"))
+//                return docxToPdf(byteArrayOutputStream.toByteArray());
+//        }
+//        return byteArrayOutputStream.toByteArray();
+//    }
 
-    public byte[] docxToPdf(byte[] bytes) {
+    public byte[] docxToPdf(byte[] bytes) throws Exception {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try {
-            InputStream docxInputStream = new ByteArrayInputStream(bytes);
-            IConverter converter = LocalConverter.builder().build();
-            converter.convert(docxInputStream).as(DocumentType.DOCX).to(byteArrayOutputStream).as(DocumentType.PDF).execute();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        InputStream is = new ByteArrayInputStream(bytes);
+
+// Save as PDF
+        XWPFDocument document = new XWPFDocument(is);
+        CTSectPr getSectPr = document.getDocument().getBody().getSectPr();
+        getSectPr.unsetPgMar();
+        CTPageMar addNewPgMar = getSectPr.addNewPgMar();
+        addNewPgMar.setLeft(BigInteger.valueOf(1000L));
+        addNewPgMar.setTop(BigInteger.valueOf(1000L));
+        addNewPgMar.setRight(BigInteger.valueOf(1000L));
+        addNewPgMar.setBottom(BigInteger.valueOf(1000L));
+// Also good to handle footer and header for more expectable result
+        addNewPgMar.setFooter(BigInteger.valueOf(0L));
+        addNewPgMar.setHeader(BigInteger.valueOf(0L));
+
+        PdfOptions options = PdfOptions.create();
+        options.fontProvider((familyName, encoding, size, style, color) -> {
+            try {
+                if (familyName.equalsIgnoreCase("Times New Roman")) {
+                    BaseFont baseFont = BaseFont.createFont("/home/huy/Desktop/back-end/java/docx4j/src/main/resources/times-new-roman.ttf", encoding, BaseFont.EMBEDDED);
+                    return new Font(baseFont, size, style, color);
+
+                } else if (familyName.equalsIgnoreCase("PMingLiU")) {
+                    BaseFont baseFont =
+                            BaseFont.createFont("/home/huy/Desktop/back-end/java/docx4j/src/main/resources/PMINGLIU.ttf", encoding, BaseFont.EMBEDDED);
+                    return new Font(baseFont, size, style, color);
+                }
+                else if (familyName.equalsIgnoreCase("Tw Cen MT")){
+                    BaseFont baseFont =
+                            BaseFont.createFont("/home/huy/Desktop/back-end/java/docx4j/src/main/resources/TCM_____.TTF", encoding, BaseFont.EMBEDDED);
+                    return new Font(baseFont, size, style, color);
+                }
+                BaseFont baseFont = BaseFont.createFont("/home/huy/Desktop/back-end/java/docx4j/src/main/resources/times-new-roman.ttf", encoding, BaseFont.EMBEDDED);
+                return new Font(baseFont, size, style, color);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        PdfConverter.getInstance().convert(document, byteArrayOutputStream, options);
+
+        is.close();
+        byteArrayOutputStream.close();
+
         return byteArrayOutputStream.toByteArray();
     }
 
@@ -374,5 +414,6 @@ public class DocxService {
         docx.getMainDocumentPart().getContent().addAll(importer.convert(stringFromFile, null));
         docx.save(new File("/home/truong02_bp/Desktop/result.docx"));
     }
+
 
 }
